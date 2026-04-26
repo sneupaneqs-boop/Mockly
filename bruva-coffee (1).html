@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRŪVA — Single Origin Coffee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Cinzel:wght@400;600;700&family=Lato:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --espresso: #0e0b08;
+    --roast: #1a1410;
+    --bark: #2a1f15;
+    --amber: #c8843a;
+    --gold: #e8b96a;
+    --cream: #f4ede0;
+    --ivory: #faf6ee;
+    --muted: #9a8878;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--espresso);
+    color: var(--cream);
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.4rem 4rem;
+    background: linear-gradient(to bottom, rgba(14,11,8,.95) 0%, transparent 100%);
+    backdrop-filter: blur(2px);
+  }
+  .nav-logo {
+    font-family: 'Cinzel', serif;
+    font-size: 1.4rem; letter-spacing: .25em;
+    color: var(--gold); text-decoration: none;
+  }
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .nav-links a {
+    font-family: 'Lato', sans-serif; font-weight: 300;
+    font-size: .8rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--cream); text-decoration: none;
+    transition: color .3s;
+  }
+  .nav-links a:hover { color: var(--gold); }
+
+  /* ── HERO ── */
+  .hero {
+    height: 100vh; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 70% at 65% 45%, rgba(90,50,18,.45) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 50% at 30% 60%, rgba(200,132,58,.08) 0%, transparent 60%),
+      var(--espresso);
+  }
+  .hero-grain {
+    position: absolute; inset: 0; opacity: .045;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+  }
+  .hero-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(200,132,58,.12);
+    animation: ring-pulse 8s ease-in-out infinite;
+  }
+  .hero-ring:nth-child(1) { width: 420px; height: 420px; animation-delay: 0s; }
+  .hero-ring:nth-child(2) { width: 620px; height: 620px; animation-delay: 1.5s; }
+  .hero-ring:nth-child(3) { width: 820px; height: 820px; animation-delay: 3s; }
+  @keyframes ring-pulse {
+    0%, 100% { opacity: .12; transform: scale(1); }
+    50% { opacity: .22; transform: scale(1.015); }
+  }
+  .hero-content {
+    position: relative; z-index: 2;
+    text-align: center; max-width: 900px; padding: 0 2rem;
+  }
+  .hero-pre {
+    font-family: 'Lato', sans-serif; font-weight: 300;
+    font-size: .72rem; letter-spacing: .45em; text-transform: uppercase;
+    color: var(--amber); margin-bottom: 1.8rem;
+    animation: fade-up .9s ease both;
+  }
+  .hero-title {
+    font-family: 'Cinzel', serif; font-weight: 700;
+    font-size: clamp(4.5rem, 12vw, 9rem);
+    line-height: .9; letter-spacing: .08em;
+    color: var(--ivory);
+    animation: fade-up 1s ease .15s both;
+  }
+  .hero-title span { color: var(--gold); }
+  .hero-sub {
+    font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic;
+    font-size: clamp(1.2rem, 2.5vw, 1.55rem);
+    color: var(--muted); margin: 2rem 0 3rem;
+    animation: fade-up 1s ease .3s both;
+  }
+  .hero-cta {
+    display: inline-flex; gap: 1.2rem; flex-wrap: wrap; justify-content: center;
+    animation: fade-up 1s ease .45s both;
+  }
+  .btn-primary {
+    font-family: 'Lato', sans-serif; font-weight: 400;
+    font-size: .78rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--espresso); background: var(--amber);
+    border: none; padding: .9rem 2.4rem;
+    cursor: pointer; text-decoration: none;
+    transition: background .3s, transform .2s;
+  }
+  .btn-primary:hover { background: var(--gold); transform: translateY(-2px); }
+  .btn-outline {
+    font-family: 'Lato', sans-serif; font-weight: 400;
+    font-size: .78rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--cream); background: transparent;
+    border: 1px solid rgba(244,237,224,.25); padding: .9rem 2.4rem;
+    cursor: pointer; text-decoration: none;
+    transition: border-color .3s, transform .2s;
+  }
+  .btn-outline:hover { border-color: var(--amber); transform: translateY(-2px); }
+  .hero-scroll {
+    position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: .6rem;
+    animation: fade-up 1.2s ease .8s both;
+  }
+  .hero-scroll span {
+    font-size: .65rem; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .scroll-line {
+    width: 1px; height: 44px; background: linear-gradient(to bottom, var(--amber), transparent);
+    animation: scroll-drop 2s ease-in-out infinite;
+  }
+  @keyframes scroll-drop {
+    0% { transform: scaleY(0); transform-origin: top; }
+    50% { transform: scaleY(1); transform-origin: top; }
+    51% { transform: scaleY(1); transform-origin: bottom; }
+    100% { transform: scaleY(0); transform-origin: bottom; }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── SECTION COMMONS ── */
+  section { padding: 7rem 4rem; }
+  .section-label {
+    font-size: .68rem; letter-spacing: .4em; text-transform: uppercase;
+    color: var(--amber); margin-bottom: 1rem;
+  }
+  .section-title {
+    font-family: 'Cinzel', serif; font-weight: 400;
+    font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.15;
+    color: var(--ivory);
+  }
+  .divider {
+    width: 3rem; height: 1px; background: var(--amber);
+    margin: 1.8rem 0;
+  }
+
+  /* ── STRIP ── */
+  .strip {
+    padding: 1.6rem 0; overflow: hidden;
+    border-top: 1px solid rgba(200,132,58,.15);
+    border-bottom: 1px solid rgba(200,132,58,.15);
+    background: var(--roast);
+  }
+  .strip-inner {
+    display: flex; gap: 3rem; width: max-content;
+    animation: marquee 22s linear infinite;
+  }
+  .strip-item {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 1.05rem; color: var(--muted); white-space: nowrap;
+  }
+  .strip-dot { color: var(--amber); margin: 0 .6rem; }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* ── ABOUT ── */
+  .about { background: var(--roast); }
+  .about-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; align-items: center;
+  }
+  .about-visual {
+    position: relative;
+  }
+  .about-frame {
+    width: 100%; aspect-ratio: 3/4;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 40%, rgba(90,50,18,.7) 0%, var(--bark) 100%);
+    border: 1px solid rgba(200,132,58,.2);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative;
+  }
+  .about-circle {
+    width: 55%; aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(200,132,58,.25) 0%, rgba(200,132,58,.05) 60%, transparent 100%);
+    position: absolute;
+    animation: breathe 5s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); opacity: .7; }
+    50% { transform: scale(1.08); opacity: 1; }
+  }
+  .about-cup {
+    position: relative; z-index: 1;
+    font-size: 7rem; filter: drop-shadow(0 0 30px rgba(200,132,58,.4));
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  .about-badge {
+    position: absolute; bottom: -1.2rem; right: -1.2rem;
+    width: 100px; height: 100px; border-radius: 50%;
+    background: var(--amber);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif; font-size: .65rem; letter-spacing: .1em;
+    color: var(--espresso); font-weight: 600;
+  }
+  .about-badge .year { font-size: 1.3rem; font-weight: 700; line-height: 1; }
+  .about-text { }
+  .about-body {
+    font-family: 'Cormorant Garamond', serif; font-weight: 300;
+    font-size: 1.15rem; line-height: 1.85; color: var(--cream); margin-bottom: 1.5rem;
+  }
+  .about-stats {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; margin-top: 3rem;
+    border-top: 1px solid rgba(200,132,58,.15); padding-top: 2rem;
+  }
+  .stat-num {
+    font-family: 'Cinzel', serif; font-size: 2rem; color: var(--gold); display: block;
+  }
+  .stat-label {
+    font-size: .72rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); margin-top: .2rem; display: block;
+  }
+
+  /* ── PRODUCTS ── */
+  .products { max-width: 1200px; margin: 0 auto; }
+  .products-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: 4rem;
+  }
+  .product-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5px;
+    background: rgba(200,132,58,.12);
+  }
+  .product-card {
+    background: var(--espresso); padding: 3rem 2.5rem;
+    position: relative; overflow: hidden;
+    transition: background .4s;
+    cursor: pointer;
+  }
+  .product-card:hover { background: var(--bark); }
+  .product-card::after {
+    content: ''; position: absolute; inset: 0;
+    border: 1px solid transparent;
+    transition: border-color .4s;
+    pointer-events: none;
+  }
+  .product-card:hover::after { border-color: rgba(200,132,58,.3); }
+  .product-tag {
+    font-size: .65rem; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--amber); margin-bottom: 2rem; display: block;
+  }
+  .product-icon { font-size: 2.8rem; margin-bottom: 1.5rem; display: block; }
+  .product-name {
+    font-family: 'Cinzel', serif; font-weight: 400;
+    font-size: 1.35rem; color: var(--ivory); margin-bottom: .8rem;
+    line-height: 1.2;
+  }
+  .product-desc {
+    font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic;
+    font-size: 1rem; color: var(--muted); line-height: 1.7; margin-bottom: 2rem;
+  }
+  .product-flavor {
+    display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 2rem;
+  }
+  .flavor-tag {
+    font-size: .65rem; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--cream); background: rgba(200,132,58,.15);
+    padding: .3rem .7rem;
+    border: 1px solid rgba(200,132,58,.2);
+  }
+  .product-price {
+    display: flex; align-items: baseline; gap: .4rem;
+  }
+  .price-num {
+    font-family: 'Cinzel', serif; font-size: 1.6rem; color: var(--gold);
+  }
+  .price-unit { font-size: .72rem; color: var(--muted); letter-spacing: .1em; }
+
+  /* ── PROCESS ── */
+  .process { background: var(--bark); }
+  .process-inner { max-width: 1200px; margin: 0 auto; }
+  .process-steps {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 4rem;
+    position: relative;
+  }
+  .process-steps::before {
+    content: ''; position: absolute; top: 2.5rem; left: 10%; right: 10%; height: 1px;
+    background: linear-gradient(to right, transparent, rgba(200,132,58,.3) 20%, rgba(200,132,58,.3) 80%, transparent);
+  }
+  .process-step { padding: 0 2rem; text-align: center; }
+  .step-num {
+    width: 5rem; height: 5rem; border-radius: 50%;
+    border: 1px solid rgba(200,132,58,.3);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-family: 'Cinzel', serif; font-size: 1.1rem; color: var(--amber);
+    background: var(--bark);
+    position: relative; z-index: 1;
+    transition: background .4s, border-color .4s;
+  }
+  .process-step:hover .step-num {
+    background: rgba(200,132,58,.15); border-color: var(--amber);
+  }
+  .step-title {
+    font-family: 'Cinzel', serif; font-weight: 400;
+    font-size: 1rem; color: var(--ivory); margin-bottom: .6rem;
+  }
+  .step-desc {
+    font-family: 'Cormorant Garamond', serif; font-size: .95rem; font-style: italic;
+    color: var(--muted); line-height: 1.7;
+  }
+
+  /* ── QUOTE ── */
+  .quote-section {
+    padding: 8rem 4rem; text-align: center;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 50%, rgba(90,50,18,.35) 0%, transparent 70%),
+      var(--espresso);
+    position: relative; overflow: hidden;
+  }
+  .quote-section::before {
+    content: '\201C';
+    position: absolute; top: 1rem; left: 50%; transform: translateX(-50%);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18rem; color: rgba(200,132,58,.06); line-height: 1;
+    pointer-events: none;
+  }
+  .quote-text {
+    font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic;
+    font-size: clamp(1.6rem, 3vw, 2.5rem); line-height: 1.55;
+    color: var(--cream); max-width: 800px; margin: 0 auto 2rem;
+    position: relative; z-index: 1;
+  }
+  .quote-attr {
+    font-size: .72rem; letter-spacing: .35em; text-transform: uppercase;
+    color: var(--amber);
+  }
+
+  /* ── ORIGIN MAP ── */
+  .origins { background: var(--roast); }
+  .origins-inner { max-width: 1200px; margin: 0 auto; }
+  .origin-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; margin-top: 4rem;
+    background: rgba(200,132,58,.1);
+  }
+  .origin-card {
+    background: var(--roast); padding: 2.5rem;
+    display: flex; gap: 2rem; align-items: flex-start;
+    transition: background .3s;
+  }
+  .origin-card:hover { background: var(--bark); }
+  .origin-flag { font-size: 2.8rem; flex-shrink: 0; line-height: 1; }
+  .origin-country {
+    font-family: 'Cinzel', serif; font-size: 1rem; color: var(--ivory); margin-bottom: .4rem;
+  }
+  .origin-region { font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; color: var(--amber); margin-bottom: .8rem; }
+  .origin-notes {
+    font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: .98rem;
+    color: var(--muted); line-height: 1.65;
+  }
+
+  /* ── NEWSLETTER ── */
+  .newsletter {
+    padding: 6rem 4rem; text-align: center;
+    background: var(--amber);
+  }
+  .newsletter-title {
+    font-family: 'Cinzel', serif; font-weight: 700;
+    font-size: clamp(2rem, 4vw, 3rem); color: var(--espresso); margin-bottom: .8rem;
+  }
+  .newsletter-sub {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 1.2rem; color: rgba(14,11,8,.65); margin-bottom: 2.5rem;
+  }
+  .newsletter-form { display: flex; gap: 0; max-width: 480px; margin: 0 auto; }
+  .newsletter-input {
+    flex: 1; padding: 1rem 1.5rem;
+    font-family: 'Lato', sans-serif; font-size: .85rem;
+    background: rgba(14,11,8,.1);
+    border: 1px solid rgba(14,11,8,.25); border-right: none;
+    color: var(--espresso); outline: none;
+  }
+  .newsletter-input::placeholder { color: rgba(14,11,8,.45); }
+  .newsletter-btn {
+    padding: 1rem 1.8rem;
+    font-family: 'Lato', sans-serif; font-weight: 400;
+    font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
+    background: var(--espresso); color: var(--cream); border: none; cursor: pointer;
+    transition: background .3s;
+  }
+  .newsletter-btn:hover { background: var(--roast); }
+
+  /* ── FOOTER ── */
+  footer {
+    background: #080604; padding: 4rem;
+  }
+  .footer-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 4rem;
+    border-bottom: 1px solid rgba(200,132,58,.1); padding-bottom: 3rem; margin-bottom: 2rem;
+  }
+  .footer-logo {
+    font-family: 'Cinzel', serif; font-size: 1.6rem; letter-spacing: .25em;
+    color: var(--gold); margin-bottom: 1rem;
+  }
+  .footer-tagline {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 1rem; color: var(--muted); line-height: 1.7; max-width: 240px;
+  }
+  .footer-col-title {
+    font-size: .68rem; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--amber); margin-bottom: 1.4rem;
+  }
+  .footer-links { list-style: none; display: flex; flex-direction: column; gap: .7rem; }
+  .footer-links a {
+    font-size: .85rem; color: var(--muted); text-decoration: none;
+    transition: color .3s;
+  }
+  .footer-links a:hover { color: var(--cream); }
+  .footer-bottom {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-copy { font-size: .75rem; color: rgba(154,136,120,.5); }
+  .footer-social { display: flex; gap: 1rem; }
+  .social-btn {
+    width: 36px; height: 36px;
+    border: 1px solid rgba(200,132,58,.2); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); text-decoration: none; font-size: .8rem;
+    transition: border-color .3s, color .3s;
+  }
+  .social-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* ── SCROLL REVEAL ── */
+  .reveal { opacity: 0; transform: translateY(30px); transition: opacity .8s ease, transform .8s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 900px) {
+    nav { padding: 1.2rem 2rem; }
+    .nav-links { display: none; }
+    section { padding: 5rem 2rem; }
+    .about-inner { grid-template-columns: 1fr; gap: 3rem; }
+    .product-grid { grid-template-columns: 1fr; }
+    .process-steps { grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .process-steps::before { display: none; }
+    .origin-grid { grid-template-columns: 1fr; }
+    .footer-inner { grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+    .newsletter-form { flex-direction: column; }
+    .newsletter-input { border-right: 1px solid rgba(14,11,8,.25); border-bottom: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">BRŪVA</a>
+  <ul class="nav-links">
+    <li><a href="#about">Story</a></li>
+    <li><a href="#products">Blends</a></li>
+    <li><a href="#process">Process</a></li>
+    <li><a href="#origins">Origins</a></li>
+    <li><a href="#newsletter" class="btn-primary" style="padding:.55rem 1.4rem;">Order Now</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grain"></div>
+  <div class="hero-ring"></div>
+  <div class="hero-ring"></div>
+  <div class="hero-ring"></div>
+  <div class="hero-content">
+    <p class="hero-pre">Single Origin · Small Batch · Est. 2018</p>
+    <h1 class="hero-title">BR<span>Ū</span>VA</h1>
+    <p class="hero-sub">Coffee roasted to the edge of perfection,<br>sourced from the world's most extraordinary farms.</p>
+    <div class="hero-cta">
+      <a href="#products" class="btn-primary">Explore Blends</a>
+      <a href="#about" class="btn-outline">Our Story</a>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- STRIP -->
+<div class="strip">
+  <div class="strip-inner">
+    <span class="strip-item">Ethiopian Yirgacheffe<span class="strip-dot">·</span></span>
+    <span class="strip-item">Colombian Huila<span class="strip-dot">·</span></span>
+    <span class="strip-item">Guatemalan Antigua<span class="strip-dot">·</span></span>
+    <span class="strip-item">Kenyan AA<span class="strip-dot">·</span></span>
+    <span class="strip-item">Sumatran Mandheling<span class="strip-dot">·</span></span>
+    <span class="strip-item">Brazilian Cerrado<span class="strip-dot">·</span></span>
+    <span class="strip-item">Costa Rican Tarrazú<span class="strip-dot">·</span></span>
+    <!-- duplicate for seamless loop -->
+    <span class="strip-item">Ethiopian Yirgacheffe<span class="strip-dot">·</span></span>
+    <span class="strip-item">Colombian Huila<span class="strip-dot">·</span></span>
+    <span class="strip-item">Guatemalan Antigua<span class="strip-dot">·</span></span>
+    <span class="strip-item">Kenyan AA<span class="strip-dot">·</span></span>
+    <span class="strip-item">Sumatran Mandheling<span class="strip-dot">·</span></span>
+    <span class="strip-item">Brazilian Cerrado<span class="strip-dot">·</span></span>
+    <span class="strip-item">Costa Rican Tarrazú<span class="strip-dot">·</span></span>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<section class="about" id="about">
+  <div class="about-inner">
+    <div class="about-visual reveal">
+      <div class="about-frame">
+        <div class="about-circle"></div>
+        <div class="about-cup">☕</div>
+      </div>
+      <div class="about-badge">
+        <span class="year">6</span>
+        <span>Years</span>
+      </div>
+    </div>
+    <div class="about-text reveal">
+      <p class="section-label">Our Story</p>
+      <h2 class="section-title">Born from obsession,<br>refined by craft.</h2>
+      <div class="divider"></div>
+      <p class="about-body">
+        Brūva began in a small roastery in Kathmandu — a single drum roaster, a notebook, and an obsession with precision. We believed that coffee, like any great art form, deserved reverence.
+      </p>
+      <p class="about-body">
+        Today we source directly from farmers at altitude, paying above fair-trade premiums. Every gram is roasted to order. No warehousing. No compromise. Just exceptional coffee delivered to your door within 48 hours of roasting.
+      </p>
+      <a href="#products" class="btn-primary" style="display:inline-block;margin-top:1rem;">View Our Blends</a>
+      <div class="about-stats">
+        <div>
+          <span class="stat-num">14</span>
+          <span class="stat-label">Origin Countries</span>
+        </div>
+        <div>
+          <span class="stat-num">48h</span>
+          <span class="stat-label">Roast to Dispatch</span>
+        </div>
+        <div>
+          <span class="stat-num">100%</span>
+          <span class="stat-label">Direct Trade</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section id="products" style="background: var(--espresso); padding: 7rem 4rem;">
+  <div class="products">
+    <div class="products-header reveal">
+      <div>
+        <p class="section-label">Current Offerings</p>
+        <h2 class="section-title">The Blends</h2>
+      </div>
+      <a href="#" class="btn-outline">View All →</a>
+    </div>
+    <div class="product-grid reveal">
+      <div class="product-card">
+        <span class="product-tag">Signature · Light Roast</span>
+        <span class="product-icon">🌄</span>
+        <h3 class="product-name">Dawn Chorus</h3>
+        <p class="product-desc">A luminous Ethiopian that opens like a window at first light. Delicate, floral, unforgettable.</p>
+        <div class="product-flavor">
+          <span class="flavor-tag">Jasmine</span>
+          <span class="flavor-tag">Bergamot</span>
+          <span class="flavor-tag">Lemon Zest</span>
+        </div>
+        <div class="product-price">
+          <span class="price-num">$24</span>
+          <span class="price-unit">/ 250g</span>
+        </div>
+      </div>
+      <div class="product-card" style="border: 1px solid rgba(200,132,58,.35);">
+        <span class="product-tag">Best Seller · Medium Roast</span>
+        <span class="product-icon">🔥</span>
+        <h3 class="product-name">Ember & Silk</h3>
+        <p class="product-desc">A Colombian-Guatemalan blend built for the everyday ritual. Rich, smooth, and impossibly balanced.</p>
+        <div class="product-flavor">
+          <span class="flavor-tag">Dark Chocolate</span>
+          <span class="flavor-tag">Hazelnut</span>
+          <span class="flavor-tag">Brown Sugar</span>
+        </div>
+        <div class="product-price">
+          <span class="price-num">$22</span>
+          <span class="price-unit">/ 250g</span>
+        </div>
+      </div>
+      <div class="product-card">
+        <span class="product-tag">Espresso · Dark Roast</span>
+        <span class="product-icon">⚡</span>
+        <h3 class="product-name">Midnight Pull</h3>
+        <p class="product-desc">Sumatra meets Brazil in a dark, brooding espresso built to cut through milk without flinching.</p>
+        <div class="product-flavor">
+          <span class="flavor-tag">Tobacco</span>
+          <span class="flavor-tag">Dark Fruit</span>
+          <span class="flavor-tag">Roasted Walnut</span>
+        </div>
+        <div class="product-price">
+          <span class="price-num">$21</span>
+          <span class="price-unit">/ 250g</span>
+        </div>
+      </div>
+      <div class="product-card">
+        <span class="product-tag">Seasonal · Limited</span>
+        <span class="product-icon">🌸</span>
+        <h3 class="product-name">Cherry Drift</h3>
+        <p class="product-desc">Kenyan natural-process that drinks like a dessert. Seasonal and always gone before you're ready.</p>
+        <div class="product-flavor">
+          <span class="flavor-tag">Black Cherry</span>
+          <span class="flavor-tag">Hibiscus</span>
+          <span class="flavor-tag">Wine</span>
+        </div>
+        <div class="product-price">
+          <span class="price-num">$28</span>
+          <span class="price-unit">/ 250g</span>
+        </div>
+      </div>
+      <div class="product-card">
+        <span class="product-tag">Subscription · Rotating</span>
+        <span class="product-icon">🔄</span>
+        <h3 class="product-name">The Discovery</h3>
+        <p class="product-desc">Monthly single-origin surprises selected by our head roaster. The best way to travel without leaving your kitchen.</p>
+        <div class="product-flavor">
+          <span class="flavor-tag">Changes Monthly</span>
+          <span class="flavor-tag">Curated</span>
+        </div>
+        <div class="product-price">
+          <span class="price-num">$19</span>
+          <span class="price-unit">/ mo</span>
+        </div>
+      </div>
+      <div class="product-card">
+        <span class="product-tag">Decaf · Medium Roast</span>
+        <span class="product-icon">🌙</span>
+        <h3 class="product-name">Still Night</h3>
+        <p class="product-desc">Water-processed Colombian. Because the ritual deserves to outlast the caffeine.</p>
+        <div class="product-flavor">
+          <span class="flavor-tag">Caramel</span>
+          <span class="flavor-tag">Toffee</span>
+          <span class="flavor-tag">Soft Spice</span>
+        </div>
+        <div class="product-price">
+          <span class="price-num">$20</span>
+          <span class="price-unit">/ 250g</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROCESS -->
+<section class="process" id="process">
+  <div class="process-inner">
+    <div class="reveal" style="text-align:center;">
+      <p class="section-label">How We Work</p>
+      <h2 class="section-title">From seed to cup,<br>nothing is left to chance.</h2>
+    </div>
+    <div class="process-steps reveal">
+      <div class="process-step">
+        <div class="step-num">01</div>
+        <h3 class="step-title">Source</h3>
+        <p class="step-desc">Direct relationships with farmers at altitudes above 1,800m. We visit every farm once a year, minimum.</p>
+      </div>
+      <div class="process-step">
+        <div class="step-num">02</div>
+        <h3 class="step-title">Cup</h3>
+        <p class="step-desc">Every lot is cupped 3 times before purchase. We reject over 70% of what we taste.</p>
+      </div>
+      <div class="process-step">
+        <div class="step-num">03</div>
+        <h3 class="step-title">Roast</h3>
+        <p class="step-desc">Small-batch drum roasting on a custom Probat. Every batch logged to the second.</p>
+      </div>
+      <div class="process-step">
+        <div class="step-num">04</div>
+        <h3 class="step-title">Dispatch</h3>
+        <p class="step-desc">Nitrogen-flushed, sealed, and shipped within 48 hours of the roast. Peak flavour, guaranteed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUOTE -->
+<section class="quote-section">
+  <blockquote class="quote-text reveal">
+    "Coffee is a language in itself — a shared pause in the relentless rhythm of daily life. At Brūva, we speak it fluently."
+  </blockquote>
+  <p class="quote-attr reveal">— Soren Brandt, Head Roaster</p>
+</section>
+
+<!-- ORIGINS -->
+<section class="origins" id="origins">
+  <div class="origins-inner">
+    <div class="reveal">
+      <p class="section-label">Where It Comes From</p>
+      <h2 class="section-title">Our Origin Partners</h2>
+      <div class="divider"></div>
+    </div>
+    <div class="origin-grid reveal">
+      <div class="origin-card">
+        <div class="origin-flag">🇪🇹</div>
+        <div>
+          <p class="origin-country">Ethiopia</p>
+          <p class="origin-region">Yirgacheffe — 2,100m</p>
+          <p class="origin-notes">The birthplace of coffee. Washed and natural lots from the Gedeo zone, grown under dense forest shade. Floral, tea-like, electric.</p>
+        </div>
+      </div>
+      <div class="origin-card">
+        <div class="origin-flag">🇨🇴</div>
+        <div>
+          <p class="origin-country">Colombia</p>
+          <p class="origin-region">Huila — 1,900m</p>
+          <p class="origin-notes">The Andes deliver year-round consistency here. Caramel sweetness, medium body, and a finish that lingers like a good conversation.</p>
+        </div>
+      </div>
+      <div class="origin-card">
+        <div class="origin-flag">🇬🇹</div>
+        <div>
+          <p class="origin-country">Guatemala</p>
+          <p class="origin-region">Antigua — 1,700m</p>
+          <p class="origin-notes">Volcanic soil, year-round cool nights. Chocolatey, full-bodied, with a subtle spice that builds on the finish.</p>
+        </div>
+      </div>
+      <div class="origin-card">
+        <div class="origin-flag">🇰🇪</div>
+        <div>
+          <p class="origin-country">Kenya</p>
+          <p class="origin-region">Kirinyaga — 1,800m</p>
+          <p class="origin-notes">Double-fermented AA lots from small-holder cooperatives. The most complex coffee on earth. Bold, winey, and utterly alive.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NEWSLETTER -->
+<section class="newsletter" id="newsletter">
+  <h2 class="newsletter-title">First to the Roast</h2>
+  <p class="newsletter-sub">New arrivals, brew guides, and seasonal releases — straight to your inbox.</p>
+  <div class="newsletter-form">
+    <input class="newsletter-input" type="email" placeholder="your@email.com">
+    <button class="newsletter-btn">Subscribe</button>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-logo">BRŪVA</div>
+      <p class="footer-tagline">Single origin coffee roasted to order. No compromise, no waste.</p>
+    </div>
+    <div>
+      <p class="footer-col-title">Shop</p>
+      <ul class="footer-links">
+        <li><a href="#">All Blends</a></li>
+        <li><a href="#">Subscriptions</a></li>
+        <li><a href="#">Gift Sets</a></li>
+        <li><a href="#">Equipment</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="footer-col-title">Company</p>
+      <ul class="footer-links">
+        <li><a href="#">Our Story</a></li>
+        <li><a href="#">Sourcing</a></li>
+        <li><a href="#">Roastery</a></li>
+        <li><a href="#">Careers</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="footer-col-title">Help</p>
+      <ul class="footer-links">
+        <li><a href="#">Brew Guides</a></li>
+        <li><a href="#">Shipping Info</a></li>
+        <li><a href="#">Returns</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p class="footer-copy">© 2024 Brūva Coffee Co. All rights reserved.</p>
+    <div class="footer-social">
+      <a href="#" class="social-btn">ig</a>
+      <a href="#" class="social-btn">tw</a>
+      <a href="#" class="social-btn">fb</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
+  });
+});
+</script>
+</body>
+</html>
