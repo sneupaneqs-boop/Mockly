@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f0f4f8; }
+::-webkit-scrollbar-thumb { background: #b0c0d0; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #8090a0; }
+
+/* Tiptap editor resets */
+.ProseMirror { outline: none; }
+.ProseMirror p { margin: 0.4em 0; }
+.ProseMirror h1 { font-size: 1.6em; font-weight: bold; margin: 0.6em 0 0.3em; }
+.ProseMirror h2 { font-size: 1.3em; font-weight: bold; margin: 0.5em 0 0.2em; }
+.ProseMirror ul, .ProseMirror ol { padding-left: 1.5em; margin: 0.3em 0; }
+.ProseMirror li { margin-bottom: 0.2em; }
+.ProseMirror table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+.ProseMirror table td, .ProseMirror table th { border: 1px solid #ccc; padding: 5px 9px; min-width: 50px; vertical-align: top; }
+.ProseMirror table th { background: #f0f0f0; font-weight: bold; text-align: left; }
+.ProseMirror .selectedCell { background: #c7dcf8 !important; }
+.ProseMirror mark { border-radius: 2px; padding: 0 1px; }
+.ProseMirror blockquote { border-left: 3px solid #0f4c81; padding-left: 12px; color: #555; margin: 0.5em 0; }
+.ProseMirror code { background: #f0f0f0; padding: 1px 4px; border-radius: 2px; font-family: monospace; font-size: 0.9em; }
+.ProseMirror pre { background: #1a2b4a; color: #e8f0f8; padding: 12px 16px; border-radius: 4px; overflow-x: auto; }
+.ProseMirror pre code { background: none; padding: 0; color: inherit; }
+
+/* Spreadsheet — prevent text selection during drag */
+.spreadsheet-container { user-select: none; }
+
+/* Animation */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.2s ease-out; }
