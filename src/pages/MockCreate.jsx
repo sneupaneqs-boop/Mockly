@@ -105,14 +105,14 @@ export default function MockCreate() {
   const totalMarks = (sections.A ? 30 : 0) + (sections.B ? 30 : 0) + (sections.C ? 40 : 0)
   const durationMins = duration === 'quick' ? 60 : duration === 'half' ? 120 : 180
 
-  // ── DB helpers (unchanged from original) ─────────────────────────────────
+  // ── DB helpers ───────────────────────────────────────────────────────────
   async function getUsedIds(table) {
     const { data } = await supabase
       .from('used_questions').select('question_id')
       .eq('user_id', user.id).eq('question_table', table)
     return new Set((data || []).map(r => r.question_id))
   }
-  async function resetUsedForTopics(table, ids) {
+  async function resetUsedForIds(table, ids) {
     if (!ids.length) return
     await supabase.from('used_questions').delete()
       .eq('user_id', user.id).eq('question_table', table).in('question_id', ids)
@@ -125,67 +125,120 @@ export default function MockCreate() {
     )
   }
 
+  // Fetch Section A/B questions — tries selected topics first, expands to ALL if insufficient
+  async function fetchAB(section, topicNums, needCount) {
+    const usedIds = await getUsedIds('questions')
+
+    const tryFetch = async (filter) => {
+      let q = supabase.from('questions').select('id, topic_number, topic_name, section, q_number, scenario')
+        .eq('subject', subject).eq('section', section)
+      if (filter) q = q.in('topic_number', filter)
+      const { data } = await q.order('q_number')
+      return data || []
+    }
+
+    let all = await tryFetch(topicNums)
+    let pool = all.filter(q => !usedIds.has(q.id))
+
+    // Expand to all topics if insufficient for selected topics
+    if (pool.length < needCount && topicNums.length < PM_TOPICS.length) {
+      const expanded = await tryFetch(null)
+      const expandedPool = expanded.filter(q => !usedIds.has(q.id))
+      if (expandedPool.length >= needCount) {
+        all = expanded
+        pool = expandedPool
+      }
+    }
+
+    // Reset used list if still insufficient
+    if (pool.length < needCount && all.length >= needCount) {
+      await resetUsedForIds('questions', all.filter(q => usedIds.has(q.id)).map(q => q.id))
+      pool = all
+    }
+
+    return { all, pool }
+  }
+
   async function generate() {
     if (selected.size === 0) { alert('Select at least one topic.'); return }
     if (!sections.A && !sections.B && !sections.C) { alert('Enable at least one section.'); return }
     setGenerating(true)
+    setWarnings([])
     const warns = []
     const topicNums = [...selected]
 
-    // ── Section A: 15 MCQ ──────────────────────────────────────────────────
+    // ── Section A: up to 15 MCQ ────────────────────────────────────────────
     let sectionAQs = []
     if (sections.A) {
-      const usedA = await getUsedIds('questions')
-      const { data: allA } = await supabase
-        .from('questions').select('id, topic_number, topic_name, section')
-        .eq('subject', subject).eq('section', 'A').in('topic_number', topicNums)
-      let pool = (allA || []).filter(q => !usedA.has(q.id))
-      if (pool.length < 15) {
-        warns.push(`Only ${pool.length} unused Section A questions — resetting used list.`)
-        await resetUsedForTopics('questions', (allA || []).filter(q => usedA.has(q.id)).map(q => q.id))
-        pool = allA || []
-      }
+      const { pool } = await fetchAB('A', topicNums, 15)
       sectionAQs = shuffle(pool).slice(0, 15)
-      if (sectionAQs.length === 0) warns.push('No Section A questions found for selected topics.')
+      if (sectionAQs.length === 0) {
+        warns.push('No Section A questions found. Please add questions in Admin → Section A.')
+      } else if (sectionAQs.length < 15) {
+        warns.push(`Only ${sectionAQs.length} Section A questions available — mock will have fewer than 15.`)
+      }
     }
 
-    // ── Section B: 3 MTQ groups × 5 questions ─────────────────────────────
+    // ── Section B: up to 3 MTQ groups × 5 questions ───────────────────────
     let sectionBQs = []
     if (sections.B) {
-      const usedB = await getUsedIds('questions')
-      const { data: allB } = await supabase
-        .from('questions').select('id, topic_number, topic_name, section, q_number, scenario')
-        .eq('subject', subject).eq('section', 'B').in('topic_number', topicNums).order('q_number')
-      const groups = new Map()
-      for (const q of allB || []) {
-        if (!groups.has(q.topic_number)) groups.set(q.topic_number, [])
-        groups.get(q.topic_number).push(q)
+      const { all: allB, pool: poolB } = await fetchAB('B', topicNums, 15)
+      const buildGroups = (qs) => {
+        const m = new Map()
+        for (const q of qs) {
+          if (!m.has(q.topic_number)) m.set(q.topic_number, [])
+          m.get(q.topic_number).push(q)
+        }
+        return [...m.entries()]
       }
-      let availGroups = [...groups.entries()].filter(([, qs]) => !qs.every(q => usedB.has(q.id)))
-      if (availGroups.length < 3) {
-        warns.push(`Only ${availGroups.length} unused Section B groups — resetting.`)
-        await resetUsedForTopics('questions', (allB || []).filter(q => usedB.has(q.id)).map(q => q.id))
-        availGroups = [...groups.entries()]
+      let groups = buildGroups(poolB)
+      if (groups.length < 3) {
+        const usedBIds = allB.map(q => q.id).filter(id => !poolB.find(p => p.id === id))
+        await resetUsedForIds('questions', usedBIds)
+        groups = buildGroups(allB)
       }
-      const picked = shuffle(availGroups).slice(0, 3)
+      const picked = shuffle(groups).slice(0, 3)
       sectionBQs = picked.flatMap(([, qs]) => qs.slice(0, 5))
-      if (sectionBQs.length === 0) warns.push('No Section B questions found for selected topics.')
+      if (sectionBQs.length === 0) {
+        warns.push('No Section B questions found. Please add MTQ groups in Admin → Section B.')
+      } else if (picked.length < 3) {
+        warns.push(`Only ${picked.length} Section B group(s) available — mock will have fewer than 3 MTQ groups.`)
+      }
     }
 
-    // ── Section C: 2 long-form ─────────────────────────────────────────────
+    // ── Section C: up to 2 long-form ──────────────────────────────────────
     let sectionCQs = []
     if (sections.C) {
       const usedC = await getUsedIds('section_c')
-      const { data: allC } = await supabase
-        .from('section_c').select('id, topic_number, topic_name').eq('subject', subject).in('topic_number', topicNums)
-      let pool = (allC || []).filter(q => !usedC.has(q.id))
-      if (pool.length < 2) {
-        warns.push(`Only ${pool.length} unused Section C questions — resetting.`)
-        await resetUsedForTopics('section_c', (allC || []).filter(q => usedC.has(q.id)).map(q => q.id))
-        pool = allC || []
+      const tryC = async (filter) => {
+        let q = supabase.from('section_c').select('id, topic_number, topic_name').eq('subject', subject)
+        if (filter) q = q.in('topic_number', filter)
+        const { data } = await q
+        return data || []
+      }
+      let allC = await tryC(topicNums)
+      let pool = allC.filter(q => !usedC.has(q.id))
+      if (pool.length < 2 && topicNums.length < PM_TOPICS.length) {
+        const exp = await tryC(null)
+        const expPool = exp.filter(q => !usedC.has(q.id))
+        if (expPool.length >= 2) { allC = exp; pool = expPool }
+      }
+      if (pool.length < 2 && allC.length > 0) {
+        await resetUsedForIds('section_c', allC.filter(q => usedC.has(q.id)).map(q => q.id))
+        pool = allC
       }
       sectionCQs = shuffle(pool).slice(0, 2)
-      if (sectionCQs.length === 0) warns.push('No Section C questions found for selected topics.')
+      if (sectionCQs.length === 0) {
+        warns.push('No Section C questions found. Please add long-form questions in Admin → Section C.')
+      }
+    }
+
+    // ── Guard: must have at least one question ─────────────────────────────
+    const totalQs = sectionAQs.length + sectionBQs.length + sectionCQs.length
+    if (totalQs === 0) {
+      setWarnings(['No questions available. Go to Admin and add questions first, or use the Seed Data tab to import sample questions.'])
+      setGenerating(false)
+      return
     }
 
     setWarnings(warns)
@@ -195,7 +248,7 @@ export default function MockCreate() {
       .insert({ user_id: user.id, subject, chapters_selected: { topics: topicNums, sections, durationMins } })
       .select('id').single()
 
-    if (error) { alert('Error: ' + error.message); setGenerating(false); return }
+    if (error) { alert('Error creating mock: ' + error.message); setGenerating(false); return }
     const mockId = session.id
 
     const rows = []
@@ -204,7 +257,7 @@ export default function MockCreate() {
     for (const q of sectionBQs) rows.push({ mock_id: mockId, question_id: q.id, question_table: 'questions', section: 'B', display_order: order++ })
     for (const q of sectionCQs) rows.push({ mock_id: mockId, question_id: q.id, question_table: 'section_c', section: 'C', display_order: order++ })
 
-    if (rows.length > 0) await supabase.from('mock_questions').insert(rows)
+    await supabase.from('mock_questions').insert(rows)
     await markUsed('questions', [...sectionAQs, ...sectionBQs].map(q => q.id))
     await markUsed('section_c', sectionCQs.map(q => q.id))
 

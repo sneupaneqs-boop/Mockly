@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Icons } from '../components/Icons'
+import { SECTION_A, SECTION_B, SECTION_C } from '../data/samplePMQuestions'
 
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean)
 
@@ -429,6 +430,143 @@ function AccessManager() {
   )
 }
 
+// ─── Seed Data Component ─────────────────────────────────────────────────────
+function SeedData({ subject }) {
+  const [counts, setCounts] = useState(null)
+  const [importing, setImporting] = useState(false)
+  const [done, setDone] = useState(false)
+  const [result, setResult] = useState(null)
+
+  useEffect(() => {
+    async function check() {
+      const [{ count: a }, { count: b }, { count: c }] = await Promise.all([
+        supabase.from('questions').select('id', { count: 'exact', head: true }).eq('subject', subject).eq('section', 'A'),
+        supabase.from('questions').select('id', { count: 'exact', head: true }).eq('subject', subject).eq('section', 'B'),
+        supabase.from('section_c').select('id', { count: 'exact', head: true }).eq('subject', subject),
+      ])
+      setCounts({ a: a || 0, b: b || 0, c: c || 0 })
+    }
+    check()
+  }, [subject, done])
+
+  async function importSamples() {
+    setImporting(true)
+    let inserted = { a: 0, b: 0, c: 0 }
+    try {
+      // Insert Section A
+      const aData = SECTION_A.filter(q => q.subject === subject)
+      if (aData.length > 0) {
+        const { data, error } = await supabase.from('questions').insert(
+          aData.map(({ subject: s, section, topic_number, topic_name, exam_session, question_text, options, correct_answer, answer_type, explanation }) =>
+            ({ subject: s, section, topic_number, topic_name, exam_session, question_text, options, correct_answer, answer_type, explanation })
+          )
+        ).select('id')
+        if (!error) inserted.a = data?.length || 0
+      }
+      // Insert Section B
+      const bData = SECTION_B.filter(q => q.subject === subject)
+      if (bData.length > 0) {
+        const { data, error } = await supabase.from('questions').insert(
+          bData.map(({ subject: s, section, topic_number, topic_name, exam_session, scenario, q_number, question_text, options, correct_answer, answer_type, explanation }) =>
+            ({ subject: s, section, topic_number, topic_name, exam_session, scenario, q_number, question_text, options, correct_answer, answer_type, explanation })
+          )
+        ).select('id')
+        if (!error) inserted.b = data?.length || 0
+      }
+      // Insert Section C
+      const cData = SECTION_C.filter(q => q.subject === subject)
+      if (cData.length > 0) {
+        const { data, error } = await supabase.from('section_c').insert(
+          cData.map(({ subject: s, topic_number, topic_name, exam_session, scenario, parts }) =>
+            ({ subject: s, topic_number, topic_name, exam_session, scenario, parts })
+          )
+        ).select('id')
+        if (!error) inserted.c = data?.length || 0
+      }
+      setResult(inserted)
+      setDone(d => !d)
+    } catch (e) {
+      alert('Import error: ' + e.message)
+    }
+    setImporting(false)
+  }
+
+  const sampleCounts = {
+    a: SECTION_A.filter(q => q.subject === subject).length,
+    b: SECTION_B.filter(q => q.subject === subject).length,
+    c: SECTION_C.filter(q => q.subject === subject).length,
+  }
+  const alreadyHasData = counts && (counts.a + counts.b + counts.c) > 0
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Seed sample data</h3>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--ink-3)' }}>
+          Import built-in ACCA {subject} sample questions to get started immediately.
+        </p>
+      </div>
+
+      {/* Current DB status */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        {[
+          { label: 'Section A in DB', val: counts?.a ?? '…', color: 'var(--accent)' },
+          { label: 'Section B in DB', val: counts?.b ?? '…', color: 'var(--violet)' },
+          { label: 'Section C in DB', val: counts?.c ?? '…', color: 'var(--green)' },
+        ].map(s => (
+          <div key={s.label} style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 18px', textAlign: 'center' }}>
+            <div style={{ fontSize: 26, fontWeight: 700, color: s.color }}>{s.val}</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sample questions info */}
+      <div style={{ background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', marginBottom: 12 }}>
+          Sample question bank for {subject} — ready to import
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink)' }}>
+            <span style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent-soft)', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>A</span>
+            <span><strong>{sampleCounts.a}</strong> MCQ questions — topics: absorption costing, ABC, CVP, relevant costing, budgeting, variance analysis, balanced scorecard, divisional performance</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink)' }}>
+            <span style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(139,92,246,.1)', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, color: 'var(--violet)', flexShrink: 0 }}>B</span>
+            <span><strong>{sampleCounts.b}</strong> MTQ sub-questions in <strong>3 groups</strong> — Variance Analysis (Delta Co), CVP Analysis (Gamma Co), Divisional Performance (Alpha Group)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink)' }}>
+            <span style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(22,163,123,.1)', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, color: 'var(--green)', flexShrink: 0 }}>C</span>
+            <span><strong>{sampleCounts.c}</strong> long-form questions — Variance Analysis full workings (Omega Co) · Balanced Scorecard + Divisional Performance (Beta Healthcare)</span>
+          </div>
+        </div>
+      </div>
+
+      {alreadyHasData && (
+        <div style={{ padding: '10px 14px', background: 'rgba(245,179,59,.1)', border: '1px solid rgba(245,179,59,.3)', borderRadius: 10, fontSize: 13, color: 'var(--ink)', marginBottom: 16 }}>
+          ⚠ Your database already has {(counts?.a || 0) + (counts?.b || 0) + (counts?.c || 0)} questions. Importing will ADD to existing questions (no duplicates check). Only import once.
+        </div>
+      )}
+
+      {result && (
+        <div style={{ padding: '12px 16px', background: 'rgba(22,163,123,.1)', border: '1px solid rgba(22,163,123,.3)', borderRadius: 10, fontSize: 13, color: 'var(--green)', marginBottom: 16, fontWeight: 600 }}>
+          ✓ Imported: {result.a} Section A · {result.b} Section B · {result.c} Section C questions
+        </div>
+      )}
+
+      <button
+        onClick={importSamples}
+        disabled={importing}
+        className="btn btn-primary"
+        style={{ fontSize: 14, padding: '12px 28px' }}
+      >
+        <Icons.bolt size={14}/>
+        {importing ? 'Importing…' : `Import ${sampleCounts.a + sampleCounts.b + sampleCounts.c} sample questions`}
+      </button>
+    </div>
+  )
+}
+
 // ─── Main Admin Page ──────────────────────────────────────────────────────────
 const TABS = [
   { id: 'sectionA', label: 'Add — Section A', icon: <Icons.brain size={14}/> },
@@ -436,6 +574,7 @@ const TABS = [
   { id: 'sectionC', label: 'Add — Section C', icon: <Icons.fileDoc size={14}/> },
   { id: 'questions', label: 'Question library', icon: <Icons.book size={14}/> },
   { id: 'access', label: 'Access control', icon: <Icons.settings size={14}/> },
+  { id: 'seed', label: 'Seed data', icon: <Icons.bolt size={14}/> },
 ]
 
 export default function Admin() {
@@ -519,6 +658,7 @@ export default function Admin() {
           </>
         )}
         {tab === 'questions' && <QuestionList subject={subject}/>}
+        {tab === 'seed' && <SeedData subject={subject}/>}
         {tab === 'access' && (
           <>
             <div style={{ marginBottom: 20 }}>
