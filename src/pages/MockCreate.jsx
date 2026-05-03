@@ -295,7 +295,7 @@ export default function MockCreate() {
             </div>
           ))}
 
-          <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+          <div style={{ display: 'flex', gap: 10, paddingTop: 8, flexWrap: 'wrap' }}>
             <button
               onClick={generate}
               disabled={generating || (selA.size === 0 && selB.size === 0 && selC.size === 0)}
@@ -305,6 +305,18 @@ export default function MockCreate() {
               {generating
                 ? <><Icons.bolt size={14}/> Generating…</>
                 : <><Icons.bolt size={14}/> Generate mock exam</>}
+            </button>
+            <button
+              className="btn btn-ghost"
+              disabled={generating}
+              onClick={() => {
+                setSelA(new Set(topicsA.map(t => t[0])))
+                setSelB(new Set(topicsB.map(t => t[0])))
+                setSelC(new Set(topicsC.map(t => t[0])))
+              }}
+              title="Select ALL topics then generate a fully random mock"
+            >
+              <Icons.sparkle size={14}/> Random (all topics)
             </button>
             <button className="btn btn-ghost" onClick={() => navigate(-1)}>Cancel</button>
           </div>

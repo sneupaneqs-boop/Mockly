@@ -1,3 +1,6 @@
+/* Tailwind utilities required for Spreadsheet/WordProcessor components */
+@tailwind utilities;
+
 /* ==========================================================
    Mockly — Design System
    ========================================================== */

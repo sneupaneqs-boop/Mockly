@@ -4,20 +4,23 @@ import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Icons } from '../components/Icons'
 import PracticeCard from '../components/PracticeCard'
-import { PRACTICE, TOPICS } from '../lib/mockData'
+import { useTopicPerformance, calcStreak, adaptDbQuestion } from '../lib/useTopicPerformance'
 
 export default function Dashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
   const [recentMocks, setRecentMocks] = useState([])
-  const [loading, setLoading] = useState(true)
-
+  const [loadingMocks, setLoadingMocks] = useState(true)
+  const [practiceQuestions, setPracticeQuestions] = useState([])
+  const [loadingPractice, setLoadingPractice] = useState(true)
   const [practiceIdx, setPracticeIdx] = useState(0)
-  const [practiceTab, setPracticeTab] = useState('all')
   const [answered, setAnswered] = useState(0)
   const [correctCount, setCorrectCount] = useState(0)
 
+  const { topics, loading: topicsLoading } = useTopicPerformance(user?.id)
+
+  // Fetch recent mocks
   useEffect(() => {
     if (!user) return
     supabase
@@ -28,33 +31,47 @@ export default function Dashboard() {
       .limit(10)
       .then(({ data }) => {
         setRecentMocks(data || [])
-        setLoading(false)
+        setLoadingMocks(false)
       })
   }, [user])
 
-  const questions = useMemo(() => {
-    if (practiceTab === 'mcq') return PRACTICE.filter(q => q.type === 'single')
-    if (practiceTab === 'multi') return PRACTICE.filter(q => q.type === 'multi')
-    return PRACTICE
-  }, [practiceTab])
-
-  const q = questions[practiceIdx % questions.length]
+  // Fetch random practice questions from DB (shuffle fresh on each login)
+  useEffect(() => {
+    supabase
+      .from('questions')
+      .select('id, subject, topic_number, topic_name, question_text, options, correct_answer, answer_type, explanation, exam_session')
+      .eq('section', 'A')
+      .limit(200)
+      .then(({ data }) => {
+        if (!data || data.length === 0) { setLoadingPractice(false); return }
+        // Fisher-Yates shuffle to get fresh order each session
+        const arr = [...data]
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]]
+        }
+        setPracticeQuestions(arr.slice(0, 20).map(adaptDbQuestion))
+        setLoadingPractice(false)
+      })
+  }, [])
 
   const stats = useMemo(() => {
-    const total = recentMocks.length
     const completed = recentMocks.filter(m => m.completed_at)
     const avg = completed.length
-      ? Math.round(
-          completed.reduce((s, m) => s + ((m.score_a || 0) + (m.score_b || 0)), 0) / completed.length
-        )
+      ? Math.round(completed.reduce((s, m) => s + ((m.score_a || 0) + (m.score_b || 0)), 0) / completed.length)
       : 0
-    return { total, avg, streak: 7 }
+    const streak = calcStreak(recentMocks)
+    return { total: recentMocks.length, avg, streak }
   }, [recentMocks])
 
-  const lastMock = recentMocks.find(m => m.completed_at)
-  const weakTopics = [...TOPICS].sort((a, b) => a.strength - b.strength).slice(0, 2)
+  const weakTopics = useMemo(() =>
+    topics.filter(t => t.total > 0).sort((a, b) => (a.strength ?? 100) - (b.strength ?? 100)).slice(0, 2),
+    [topics]
+  )
 
   const displayName = user?.email?.split('@')[0] || 'there'
+
+  const q = practiceQuestions[practiceIdx % Math.max(1, practiceQuestions.length)]
 
   function handleAnswer({ correct }) {
     setAnswered(a => a + 1)
@@ -62,7 +79,7 @@ export default function Dashboard() {
   }
 
   function nextPractice() {
-    setPracticeIdx(i => (i + 1) % questions.length)
+    setPracticeIdx(i => (i + 1) % Math.max(1, practiceQuestions.length))
   }
 
   return (
@@ -134,19 +151,19 @@ export default function Dashboard() {
           <Icons.arrow size={14} className="arrow"/>
           <div className="qicon"><Icons.target size={20}/></div>
           <b>Drill weak area</b>
-          <span>{weakTopics[0]?.name || 'Activity-based costing'} — your weakest topic.</span>
+          <span>{weakTopics[0]?.name || 'Pick your weakest topic to drill.'}</span>
         </div>
         <div className="quick q3" onClick={() => navigate('/history')}>
           <Icons.arrow size={14} className="arrow"/>
           <div className="qicon"><Icons.history size={20}/></div>
           <b>Review history</b>
-          <span>{stats.total} past mocks · find patterns &amp; trends.</span>
+          <span>{stats.total > 0 ? `${stats.total} past mocks · find patterns & trends.` : 'No mocks yet — start your first one.'}</span>
         </div>
         <div className="quick q4" onClick={() => navigate('/topics')}>
           <Icons.arrow size={14} className="arrow"/>
           <div className="qicon"><Icons.book size={20}/></div>
           <b>Browse topics</b>
-          <span>All 18 PM chapters · track your strength per area.</span>
+          <span>All PM chapters · track your strength per area.</span>
         </div>
       </div>
 
@@ -154,39 +171,38 @@ export default function Dashboard() {
       <div className="section-head">
         <div>
           <h2 className="section-title">Quick <em>practice</em></h2>
-          <p className="section-sub">Answer questions right here · instant feedback &amp; explanation.</p>
+          <p className="section-sub">New questions every session · instant feedback &amp; explanation.</p>
         </div>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+        {practiceQuestions.length > 0 && (
           <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
             Today: <b style={{ color: 'var(--ink)' }}>{correctCount}</b> / {answered} correct
           </div>
-          <div className="practice-tabs">
-            <button className={`tab ${practiceTab === 'all' ? 'active' : ''}`}
-              onClick={() => { setPracticeTab('all'); setPracticeIdx(0) }}>
-              All <span className="count">{PRACTICE.length}</span>
-            </button>
-            <button className={`tab ${practiceTab === 'mcq' ? 'active' : ''}`}
-              onClick={() => { setPracticeTab('mcq'); setPracticeIdx(0) }}>
-              MCQ <span className="count">{PRACTICE.filter(q => q.type === 'single').length}</span>
-            </button>
-            <button className={`tab ${practiceTab === 'multi' ? 'active' : ''}`}
-              onClick={() => { setPracticeTab('multi'); setPracticeIdx(0) }}>
-              Multi-select <span className="count">{PRACTICE.filter(q => q.type === 'multi').length}</span>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
-      <PracticeCard
-        q={q}
-        idx={practiceIdx}
-        total={questions.length}
-        onNext={nextPractice}
-        onAnswer={handleAnswer}
-      />
+      {loadingPractice ? (
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-3)' }}>Loading questions…</div>
+      ) : practiceQuestions.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: 40, color: 'var(--ink-3)' }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>📚</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 8 }}>No practice questions yet</div>
+          <div style={{ marginBottom: 20, fontSize: 13 }}>Add Section A questions in the Admin panel to enable quick practice.</div>
+          <button className="btn btn-sm" onClick={() => navigate('/admin')}>
+            <Icons.plus size={13}/> Go to Admin
+          </button>
+        </div>
+      ) : (
+        <PracticeCard
+          q={q}
+          idx={practiceIdx}
+          total={practiceQuestions.length}
+          onNext={nextPractice}
+          onAnswer={handleAnswer}
+        />
+      )}
 
-      {/* Recent mocks (if any) */}
-      {!loading && recentMocks.length > 0 && (
+      {/* Recent mocks */}
+      {!loadingMocks && recentMocks.length > 0 && (
         <>
           <div className="section-head" style={{ marginTop: 36 }}>
             <div>
@@ -204,18 +220,18 @@ export default function Dashboard() {
               return (
                 <div key={m.id} className="mock-row"
                   onClick={() => navigate(m.completed_at ? `/mock/${m.id}/results` : `/mock/${m.id}`)}>
-                  <div className={`badge-circle ${tier}`}>{score || '—'}</div>
+                  <div className={`badge-circle ${m.completed_at ? tier : 's30'}`}>
+                    {m.completed_at ? score || '--' : '…'}
+                  </div>
                   <div>
                     <div className="name">{m.subject} Mock Exam</div>
                     <div className="sub">{m.subject} · {new Date(m.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                   </div>
                   <span className="time">
-                    <Icons.clock size={11}/>
-                    {m.completed_at ? 'Complete' : 'In progress'}
+                    <Icons.clock size={11}/> {m.completed_at ? 'Complete' : 'In progress'}
                   </span>
                   <div className="pct">
                     {m.completed_at ? score : '—'}
-                    <span style={{ fontSize: 13, color: 'var(--ink-3)' }}></span>
                   </div>
                   <button className="btn btn-sm">
                     {m.completed_at ? 'Review' : 'Continue'} <Icons.arrow size={12}/>
