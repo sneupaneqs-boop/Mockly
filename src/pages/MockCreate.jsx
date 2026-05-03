@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
+import { Icons } from '../components/Icons'
 
 function shuffle(arr) {
   const a = [...arr]
@@ -18,7 +19,7 @@ export default function MockCreate() {
   const { user } = useAuth()
   const subject = location.state?.subject || 'PM'
 
-  const [topicsA, setTopicsA] = useState([])   // [[num, name], ...]
+  const [topicsA, setTopicsA] = useState([])
   const [topicsB, setTopicsB] = useState([])
   const [topicsC, setTopicsC] = useState([])
   const [selA, setSelA] = useState(new Set())
@@ -91,7 +92,6 @@ export default function MockCreate() {
     setGenerating(true)
     const warns = []
 
-    // ── Section A: exactly 15 MCQs ──
     let sectionAQs = []
     if (selA.size > 0) {
       const usedA = await getUsedIds('questions')
@@ -100,18 +100,15 @@ export default function MockCreate() {
         .eq('subject', subject).eq('section', 'A').in('topic_number', [...selA])
 
       let pool = (allA || []).filter(q => !usedA.has(q.id))
-
       if (pool.length < 15) {
         warns.push(`Not enough unused Section A questions (found ${pool.length}). Resetting used questions for selected topics.`)
         const toReset = (allA || []).filter(q => usedA.has(q.id)).map(q => q.id)
         await resetUsedForTopics('questions', toReset)
         pool = allA || []
       }
-
       sectionAQs = shuffle(pool).slice(0, 15)
     }
 
-    // ── Section B: exactly 3 complete MTQ groups (5 sub-questions each = 15 total) ──
     let sectionBQs = []
     if (selB.size > 0) {
       const usedB = await getUsedIds('questions')
@@ -120,14 +117,12 @@ export default function MockCreate() {
         .eq('subject', subject).eq('section', 'B').in('topic_number', [...selB])
         .order('q_number')
 
-      // Group questions by topic_number (each MTQ group = one case)
       const groups = new Map()
       for (const q of allB || []) {
         if (!groups.has(q.topic_number)) groups.set(q.topic_number, [])
         groups.get(q.topic_number).push(q)
       }
 
-      // A group is "used" only if ALL its questions have been used
       const availGroups = [...groups.entries()].filter(
         ([, qs]) => !qs.every(q => usedB.has(q.id))
       )
@@ -141,12 +136,9 @@ export default function MockCreate() {
         await resetUsedForTopics('questions', toReset)
         pickedGroups = shuffle([...groups.entries()]).slice(0, 3)
       }
-
-      // Each group should have exactly 5 questions; take first 5 if more
       sectionBQs = pickedGroups.flatMap(([, qs]) => qs.slice(0, 5))
     }
 
-    // ── Section C: exactly 2 questions ──
     let sectionCQs = []
     if (selC.size > 0) {
       const usedC = await getUsedIds('section_c')
@@ -155,20 +147,17 @@ export default function MockCreate() {
         .eq('subject', subject).in('topic_number', [...selC])
 
       let pool = (allC || []).filter(q => !usedC.has(q.id))
-
       if (pool.length < 2) {
         warns.push(`Not enough unused Section C questions (found ${pool.length}). Resetting.`)
         const toReset = (allC || []).filter(q => usedC.has(q.id)).map(q => q.id)
         await resetUsedForTopics('section_c', toReset)
         pool = allC || []
       }
-
       sectionCQs = shuffle(pool).slice(0, 2)
     }
 
     setWarnings(warns)
 
-    // ── Create mock session ──
     const { data: session, error: sessErr } = await supabase
       .from('mock_sessions')
       .insert({ user_id: user.id, subject, chapters_selected: { A: [...selA], B: [...selB], C: [...selC] } })
@@ -177,23 +166,13 @@ export default function MockCreate() {
     if (sessErr) { alert('Error creating session: ' + sessErr.message); setGenerating(false); return }
     const mockId = session.id
 
-    // ── Insert mock_questions rows ──
     const rows = []
     let order = 0
-
-    for (const q of sectionAQs) {
-      rows.push({ mock_id: mockId, question_id: q.id, question_table: 'questions', section: 'A', display_order: order++ })
-    }
-    for (const q of sectionBQs) {
-      rows.push({ mock_id: mockId, question_id: q.id, question_table: 'questions', section: 'B', display_order: order++ })
-    }
-    for (const q of sectionCQs) {
-      rows.push({ mock_id: mockId, question_id: q.id, question_table: 'section_c', section: 'C', display_order: order++ })
-    }
+    for (const q of sectionAQs) rows.push({ mock_id: mockId, question_id: q.id, question_table: 'questions', section: 'A', display_order: order++ })
+    for (const q of sectionBQs) rows.push({ mock_id: mockId, question_id: q.id, question_table: 'questions', section: 'B', display_order: order++ })
+    for (const q of sectionCQs) rows.push({ mock_id: mockId, question_id: q.id, question_table: 'section_c', section: 'C', display_order: order++ })
 
     if (rows.length > 0) await supabase.from('mock_questions').insert(rows)
-
-    // ── Mark used ──
     await markUsed('questions', [...sectionAQs, ...sectionBQs].map(q => q.id))
     await markUsed('section_c', sectionCQs.map(q => q.id))
 
@@ -201,117 +180,136 @@ export default function MockCreate() {
     navigate(`/mock/${mockId}`)
   }
 
-  const SectionPicker = ({ label, desc, topics, sel, section, color }) => (
-    <div style={{ background: '#fff', border: '1px solid #d8e2ee', borderRadius: 4, marginBottom: 16, overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: color, borderBottom: '1px solid #d8e2ee' }}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2b4a' }}>{label}</div>
-          <div style={{ fontSize: 11, color: '#5a7a9a', marginTop: 2 }}>{desc}</div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#0f4c81' }}>
-            {sel.size}/{topics.length} selected
-          </span>
-          <button
-            onClick={() => toggleAll(section)}
-            style={{ fontSize: 11, color: '#0f4c81', background: 'none', border: '1px solid #0f4c81', padding: '2px 8px', cursor: 'pointer', borderRadius: 2 }}
-          >
-            {sel.size === topics.length ? 'Deselect all' : 'Select all'}
-          </button>
-        </div>
-      </div>
-      {/* Topics grid */}
-      <div style={{ padding: '10px 12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 4 }}>
-        {topics.map(([num, name]) => (
-          <label
-            key={num}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-              border: `1px solid ${sel.has(num) ? '#0f4c81' : '#d8e2ee'}`,
-              background: sel.has(num) ? '#eaf3ff' : '#fafcff',
-              cursor: 'pointer', borderRadius: 2, fontSize: 12, color: '#1a2b4a',
-              transition: 'all 0.1s',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={sel.has(num)}
-              onChange={() => toggle(section, num)}
-              style={{ accentColor: '#0f4c81', width: 13, height: 13 }}
-            />
-            <span style={{ color: '#9ab3cc', minWidth: 22, fontSize: 11 }}>{num}.</span>
-            <span style={{ flex: 1 }}>{name}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  )
+  const SECTIONS = [
+    {
+      key: 'A', label: 'Section A', badge: 'MCQ',
+      desc: '15 questions × 2 marks = 30 marks',
+      topics: topicsA, sel: selA,
+      color: 'var(--accent)', colorSoft: 'var(--accent-soft)',
+      icon: <Icons.brain size={18}/>,
+    },
+    {
+      key: 'B', label: 'Section B', badge: 'MTQ',
+      desc: '3 cases × 5 questions = 15 questions, 30 marks',
+      topics: topicsB, sel: selB,
+      color: 'var(--violet)', colorSoft: 'rgba(139,92,246,.08)',
+      icon: <Icons.layers size={18}/>,
+    },
+    {
+      key: 'C', label: 'Section C', badge: 'Long form',
+      desc: '2 questions · self-marked · 20 marks each',
+      topics: topicsC, sel: selC,
+      color: 'var(--green)', colorSoft: 'rgba(22,163,123,.08)',
+      icon: <Icons.fileDoc size={18}/>,
+    },
+  ]
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f0f4f8', fontFamily: 'Arial, Helvetica, sans-serif' }}>
-      {/* Top bar */}
-      <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#1a2b4a' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => navigate(-1)} style={{ color: '#7ab3d4', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}>← Back</button>
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>Mockly</span>
-          <span style={{ color: '#7a9cbd', fontSize: 12 }}>|</span>
-          <span style={{ color: '#c8d8e8', fontSize: 13 }}>Create Mock — {subject}</span>
+    <div className="page page-enter">
+      {/* Header */}
+      <div className="section-head">
+        <div>
+          <h2 className="section-title">Create a <em>mock</em></h2>
+          <p className="section-sub">Pick topics for each section — we'll pull fresh questions automatically.</p>
         </div>
+        <button className="btn btn-ghost" onClick={() => navigate(-1)}>
+          <Icons.arrow size={14} style={{ transform: 'rotate(180deg)' }}/> Back
+        </button>
       </div>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 20px' }}>
-        {/* Info banner */}
-        <div style={{ background: '#e8f0f8', border: '1px solid #b8d0e8', borderRadius: 4, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 20, fontSize: 13 }}>
-          {[
-            { s: 'A', label: 'Section A — MCQ', detail: '15 questions × 2 marks = 30 marks' },
-            { s: 'B', label: 'Section B — MTQ', detail: '3 cases × 5 questions = 15 questions, 30 marks' },
-            { s: 'C', label: 'Section C — Long Form', detail: '2 questions, self-marked, 20 marks each' },
-          ].map(({ s, label, detail }) => (
-            <div key={s} style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ fontWeight: 700, color: '#0f4c81', fontSize: 14 }}>{label}</div>
-              <div style={{ color: '#5a7a9a', fontSize: 12, marginTop: 2 }}>{detail}</div>
+      {/* Section info cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 28 }}>
+        {SECTIONS.map(s => (
+          <div key={s.key} style={{ padding: '16px 18px', background: s.colorSoft, border: `1px solid ${s.color}30`, borderRadius: 16, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: s.color + '22', display: 'grid', placeItems: 'center', flexShrink: 0, color: s.color }}>
+              {s.icon}
             </div>
-          ))}
-        </div>
-
-        {warnings.map((w, i) => (
-          <div key={i} style={{ background: '#fff8e6', border: '1px solid #f5c842', borderRadius: 4, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: '#7a5a00' }}>
-            ⚠ {w}
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{s.label} <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 6, background: s.color + '22', color: s.color, fontWeight: 700 }}>{s.badge}</span></div>
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 3 }}>{s.desc}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: s.color, marginTop: 4 }}>{s.sel.size} of {s.topics.length} topics selected</div>
+            </div>
           </div>
         ))}
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#5a7a9a' }}>Loading topics…</div>
-        ) : (
-          <>
-            <SectionPicker label="Section A — MCQ Topics" desc="Select topics to draw 15 random MCQ questions from" topics={topicsA} sel={selA} section="A" color="#f0f6ff" />
-            <SectionPicker label="Section B — MTQ Case Topics" desc="Select topics to draw 3 complete case groups (5 sub-questions each)" topics={topicsB} sel={selB} section="B" color="#f5f0ff" />
-            <SectionPicker label="Section C — Long Form Topics" desc="Select topics to draw 2 long-form questions" topics={topicsC} sel={selC} section="C" color="#f0fff5" />
-
-            <div style={{ display: 'flex', gap: 10, paddingTop: 16, borderTop: '1px solid #d8e2ee' }}>
-              <button
-                onClick={generate}
-                disabled={generating || (selA.size === 0 && selB.size === 0 && selC.size === 0)}
-                style={{
-                  padding: '10px 28px', fontSize: 14, fontWeight: 700,
-                  background: '#0f4c81', color: '#fff', border: 'none',
-                  cursor: generating ? 'wait' : 'pointer', borderRadius: 3,
-                  opacity: generating ? 0.7 : 1,
-                }}
-              >
-                {generating ? '⏳ Generating…' : '▶ Generate Mock Exam'}
-              </button>
-              <button
-                onClick={() => navigate(-1)}
-                style={{ padding: '10px 18px', fontSize: 13, color: '#5a7a9a', background: '#fff', border: '1px solid #d8e2ee', cursor: 'pointer', borderRadius: 3 }}
-              >
-                Cancel
-              </button>
-            </div>
-          </>
-        )}
       </div>
+
+      {warnings.map((w, i) => (
+        <div key={i} style={{ background: 'rgba(245,179,59,.1)', border: '1px solid var(--gold)', borderRadius: 12, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: 'var(--ink)', display: 'flex', gap: 8 }}>
+          <Icons.flag size={14} style={{ color: 'var(--gold)', flexShrink: 0, marginTop: 1 }}/> {w}
+        </div>
+      ))}
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--ink-3)', fontSize: 14 }}>Loading topics…</div>
+      ) : (
+        <>
+          {SECTIONS.map(s => (
+            <div key={s.key} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, marginBottom: 18, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: s.colorSoft }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ color: s.color }}>{s.icon}</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{s.label} — {s.badge} Topics</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{s.desc}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: s.color }}>{s.sel.size}/{s.topics.length}</span>
+                  <button
+                    onClick={() => toggleAll(s.key)}
+                    className="btn btn-sm"
+                    style={{ borderColor: s.color, color: s.color }}
+                  >
+                    {s.sel.size === s.topics.length ? 'Deselect all' : 'Select all'}
+                  </button>
+                </div>
+              </div>
+              <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+                {s.topics.map(([num, name]) => {
+                  const on = s.sel.has(num)
+                  return (
+                    <label key={num} style={{
+                      display: 'flex', alignItems: 'center', gap: 9, padding: '8px 12px',
+                      border: `1.5px solid ${on ? s.color : 'var(--line)'}`,
+                      background: on ? s.colorSoft : 'var(--bg)',
+                      cursor: 'pointer', borderRadius: 10, fontSize: 12.5, color: 'var(--ink)',
+                      transition: 'all 0.12s',
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() => toggle(s.key, num)}
+                        style={{ accentColor: s.color, width: 14, height: 14, flexShrink: 0 }}
+                      />
+                      <span style={{ color: 'var(--ink-3)', minWidth: 22, fontSize: 11, fontFamily: 'var(--font-mono)' }}>{num}.</span>
+                      <span style={{ flex: 1, lineHeight: 1.3 }}>{name}</span>
+                    </label>
+                  )
+                })}
+                {s.topics.length === 0 && (
+                  <div style={{ padding: '12px 4px', fontSize: 12.5, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+                    No {s.label} topics in the database yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+            <button
+              onClick={generate}
+              disabled={generating || (selA.size === 0 && selB.size === 0 && selC.size === 0)}
+              className="btn btn-primary"
+              style={{ opacity: generating ? .7 : 1, cursor: generating ? 'wait' : 'pointer' }}
+            >
+              {generating
+                ? <><Icons.bolt size={14}/> Generating…</>
+                : <><Icons.bolt size={14}/> Generate mock exam</>}
+            </button>
+            <button className="btn btn-ghost" onClick={() => navigate(-1)}>Cancel</button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

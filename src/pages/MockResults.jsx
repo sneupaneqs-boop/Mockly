@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { normalizeQuestion, markAnswer, requiresSpreadsheet } from '../lib/questionUtils'
+import { Icons } from '../components/Icons'
+import { exportWord, exportExcel } from '../lib/examExporter'
 
 function parseMaxMarks(requirement) {
   const m = (requirement || '').match(/\((\d+)\s*marks?\)/i)
@@ -10,14 +12,17 @@ function parseMaxMarks(requirement) {
 
 function ScoreBadge({ label, score, max, color }) {
   const pct = max ? Math.round(score / max * 100) : 0
+  const pass = pct >= 50
   return (
-    <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 4, padding: '12px 20px', textAlign: 'center', minWidth: 120 }}>
-      <div style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>{score}<span style={{ fontSize: 16, fontWeight: 400, color: 'rgba(255,255,255,0.7)' }}>/{max}</span></div>
-      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>{label}</div>
-      <div style={{ marginTop: 6, height: 4, background: 'rgba(0,0,0,0.2)', borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: pct >= 50 ? '#2ecc71' : '#e74c3c', transition: 'width 0.6s' }} />
+    <div style={{ background: 'rgba(255,255,255,.1)', borderRadius: 16, padding: '16px 22px', textAlign: 'center', minWidth: 130, backdropFilter: 'blur(4px)' }}>
+      <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-display)' }}>
+        {score}<span style={{ fontSize: 16, opacity: .5 }}>/{max}</span>
       </div>
-      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 3 }}>{pct}%</div>
+      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.6)', marginTop: 2, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
+      <div style={{ marginTop: 8, height: 4, background: 'rgba(0,0,0,.2)', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: pass ? '#16A37B' : '#F43F76', transition: 'width .6s', borderRadius: 4 }}/>
+      </div>
+      <div style={{ fontSize: 10, color: pass ? '#6EE7B7' : '#FCA5A5', marginTop: 4, fontWeight: 700 }}>{pct}% {pass ? '✓ Pass' : '✗ Fail'}</div>
     </div>
   )
 }
@@ -32,81 +37,84 @@ function QuestionResultCard({ item, qNum }) {
   const isTextType = correct === null
   const isCorrect = correct === true
 
-  let statusBg, statusColor, statusText
-  if (isTextType) { statusBg = '#fff8e0'; statusColor = '#a06000'; statusText = 'Self-mark' }
-  else if (isCorrect) { statusBg = '#eafaf1'; statusColor = '#1a7a45'; statusText = `✓ +2` }
-  else { statusBg = '#fef0ee'; statusColor = '#b83030'; statusText = `✗ 0` }
-
   return (
-    <div style={{ border: `1px solid ${isTextType ? '#f5d060' : isCorrect ? '#9de0b8' : '#f4a9a0'}`, borderRadius: 4, marginBottom: 10, overflow: 'hidden', background: '#fff' }}>
-      {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '10px 14px', background: isTextType ? '#fffbf0' : isCorrect ? '#f4fbf7' : '#fff9f8' }}>
+    <div style={{
+      border: '1px solid',
+      borderColor: isTextType ? 'var(--gold)' : isCorrect ? 'rgba(22,163,123,.3)' : 'rgba(244,63,118,.3)',
+      borderRadius: 14, marginBottom: 10, overflow: 'hidden', background: 'var(--surface)',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+        padding: '12px 16px',
+        background: isTextType ? 'rgba(245,179,59,.06)' : isCorrect ? 'rgba(22,163,123,.06)' : 'rgba(244,63,118,.06)',
+      }}>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontWeight: 700, fontSize: 12, color: '#1a2b4a' }}>Q{qNum}</span>
-            {q.answer_type && <span style={{ fontSize: 10, color: '#7a9cbd', textTransform: 'uppercase', fontWeight: 600 }}>{q.answer_type}</span>}
-            {q.exam_session && <span style={{ fontSize: 10, color: '#9ab3cc' }}>{q.exam_session}</span>}
+            <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--ink)', fontFamily: 'var(--font-mono)' }}>Q{qNum}</span>
+            {q.answer_type && <span className="tag" style={{ fontSize: 10 }}>{q.answer_type}</span>}
+            {q.exam_session && <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{q.exam_session}</span>}
           </div>
           {q.scenario && (
-            <div style={{ fontSize: 11, color: '#5a7a9a', background: '#f0f4f8', padding: '4px 8px', marginBottom: 6, borderRadius: 2, lineHeight: 1.5, maxHeight: 48, overflow: 'hidden' }}>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', background: 'var(--bg)', padding: '4px 8px', marginBottom: 6, borderRadius: 8, lineHeight: 1.5, maxHeight: 48, overflow: 'hidden' }}>
               {q.scenario.substring(0, 160)}…
             </div>
           )}
-          <p style={{ fontSize: 13, color: '#222', lineHeight: 1.55, margin: 0 }}>{q.question_text}</p>
+          <p style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.55, margin: 0 }}>{q.question_text}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 16, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 2, background: statusBg, color: statusColor }}>{statusText}</span>
+          <span style={{
+            fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 8,
+            background: isTextType ? 'rgba(245,179,59,.15)' : isCorrect ? 'rgba(22,163,123,.15)' : 'rgba(244,63,118,.15)',
+            color: isTextType ? 'var(--gold)' : isCorrect ? 'var(--green)' : 'var(--rose)',
+          }}>
+            {isTextType ? 'Self-mark' : isCorrect ? `✓ +${marks}` : '✗ 0'}
+          </span>
           <button
             onClick={() => setExpanded(e => !e)}
-            style={{ fontSize: 11, color: '#0f4c81', background: '#e8f0f8', border: 'none', padding: '3px 10px', cursor: 'pointer', borderRadius: 2 }}
+            className="btn btn-sm"
           >
             {expanded ? 'Hide' : 'Explain'}
           </button>
         </div>
       </div>
 
-      {/* Answer comparison */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderTop: `1px solid ${isCorrect ? '#9de0b8' : isTextType ? '#f5d060' : '#f4a9a0'}` }}>
-        <div style={{ padding: '8px 14px', borderRight: '1px solid #e8eff5' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#7a9cbd', textTransform: 'uppercase', marginBottom: 4 }}>Your Answer</div>
-          <div style={{ fontSize: 13, padding: '4px 8px', background: isTextType ? '#fff8e0' : isCorrect ? '#eafaf1' : '#fef0ee', borderRadius: 2, color: isCorrect ? '#1a7a45' : '#b83030', fontWeight: 600 }}>
-            {item.user_answer || <span style={{ color: '#bbb', fontStyle: 'italic', fontWeight: 400 }}>No answer</span>}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid var(--line)' }}>
+        <div style={{ padding: '8px 14px', borderRight: '1px solid var(--line)' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Your Answer</div>
+          <div style={{ fontSize: 13, padding: '4px 8px', background: isTextType ? 'rgba(245,179,59,.1)' : isCorrect ? 'rgba(22,163,123,.1)' : 'rgba(244,63,118,.1)', borderRadius: 8, color: isCorrect ? 'var(--green)' : 'var(--ink)', fontWeight: 600 }}>
+            {item.user_answer || <span style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontWeight: 400 }}>No answer</span>}
           </div>
         </div>
         <div style={{ padding: '8px 14px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#7a9cbd', textTransform: 'uppercase', marginBottom: 4 }}>Correct Answer</div>
-          <div style={{ fontSize: 13, padding: '4px 8px', background: '#eafaf1', borderRadius: 2, color: '#1a7a45', fontWeight: 600 }}>
-            {q.correct_answer || <span style={{ color: '#bbb', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Correct Answer</div>
+          <div style={{ fontSize: 13, padding: '4px 8px', background: 'rgba(22,163,123,.1)', borderRadius: 8, color: 'var(--green)', fontWeight: 600 }}>
+            {q.correct_answer || <span style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontWeight: 400 }}>—</span>}
           </div>
         </div>
       </div>
 
-      {/* Options display */}
       {q.options && expanded && (
-        <div style={{ padding: '8px 14px', borderTop: '1px solid #e8eff5', background: '#fafcff' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#7a9cbd', textTransform: 'uppercase', marginBottom: 6 }}>Options</div>
+        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--line)', background: 'var(--bg)' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', marginBottom: 8 }}>Options</div>
           {Object.entries(q.options).map(([k, v]) => {
             const correctLetters = (q.correct_answer || '').split(',').map(s => s.trim().toUpperCase())
             const isCorrectOpt = correctLetters.includes(k)
             const isUserOpt = (item.user_answer || '').split(',').map(s => s.trim().toUpperCase()).includes(k)
             return (
-              <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 3, padding: '3px 6px', borderRadius: 2, background: isCorrectOpt ? '#eafaf1' : isUserOpt && !isCorrectOpt ? '#fef0ee' : 'transparent' }}>
-                <span style={{ fontWeight: 700, fontSize: 12, color: isCorrectOpt ? '#1a7a45' : isUserOpt ? '#b83030' : '#0f4c81', minWidth: 18 }}>{k}.</span>
-                <span style={{ fontSize: 12, color: '#333', lineHeight: 1.5 }}>{v}</span>
-                {isCorrectOpt && <span style={{ fontSize: 10, color: '#1a7a45', fontWeight: 700, marginLeft: 'auto' }}>✓ Correct</span>}
+              <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 4, padding: '4px 8px', borderRadius: 8, background: isCorrectOpt ? 'rgba(22,163,123,.1)' : isUserOpt && !isCorrectOpt ? 'rgba(244,63,118,.1)' : 'transparent' }}>
+                <span style={{ fontWeight: 700, fontSize: 12, color: isCorrectOpt ? 'var(--green)' : isUserOpt ? 'var(--rose)' : 'var(--accent)', minWidth: 18 }}>{k}.</span>
+                <span style={{ fontSize: 12, color: 'var(--ink)', lineHeight: 1.5, flex: 1 }}>{v}</span>
+                {isCorrectOpt && <span style={{ fontSize: 10, color: 'var(--green)', fontWeight: 700, flexShrink: 0 }}>✓</span>}
               </div>
             )
           })}
         </div>
       )}
 
-      {/* Explanation */}
       {expanded && q.explanation && (
-        <div style={{ padding: '10px 14px', borderTop: '1px solid #e8eff5', background: '#f8fafc' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#0f4c81', textTransform: 'uppercase', marginBottom: 6 }}>Explanation</div>
-          <div style={{ fontSize: 12, color: '#333', lineHeight: 1.65, whiteSpace: 'pre-wrap', fontFamily: 'Arial, sans-serif' }}>
-            {q.explanation}
-          </div>
+        <div style={{ padding: '12px 14px', borderTop: '1px solid var(--line)', background: 'var(--surface)' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 8 }}>Explanation</div>
+          <div style={{ fontSize: 12.5, color: 'var(--ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{q.explanation}</div>
         </div>
       )}
     </div>
@@ -120,8 +128,9 @@ export default function MockResults() {
   const [session, setSession] = useState(null)
   const [items, setItems] = useState([])
   const [tab, setTab] = useState('A')
-  const [selfMarks, setSelfMarks] = useState({}) // `${mockQId}_${partIdx}` → marks string
+  const [selfMarks, setSelfMarks] = useState({})
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -130,7 +139,7 @@ export default function MockResults() {
       const { data: mqs } = await supabase.from('mock_questions').select('*').eq('mock_id', id).order('display_order')
 
       const abIds = (mqs || []).filter(q => q.question_table === 'questions').map(q => q.question_id)
-      const cIds  = (mqs || []).filter(q => q.question_table === 'section_c').map(q => q.question_id)
+      const cIds = (mqs || []).filter(q => q.question_table === 'section_c').map(q => q.question_id)
 
       const qMap = {}
       if (abIds.length > 0) {
@@ -145,7 +154,6 @@ export default function MockResults() {
       const enriched = (mqs || []).map(mq => ({ ...mq, questionData: qMap[mq.question_id] || null }))
       setItems(enriched)
 
-      // Compute scores and save
       const sectionItems = { A: enriched.filter(i => i.section === 'A'), B: enriched.filter(i => i.section === 'B') }
       let scoreA = 0, scoreB = 0
       for (const item of sectionItems.A) {
@@ -159,10 +167,7 @@ export default function MockResults() {
       await supabase.from('mock_sessions').update({ score_a: scoreA, score_b: scoreB }).eq('id', id)
 
       setLoading(false)
-
-      // Set default tab to first available section
-      const firstSection = enriched[0]?.section || 'A'
-      setTab(firstSection)
+      setTab(enriched[0]?.section || 'A')
     }
     load()
   }, [id])
@@ -185,65 +190,102 @@ export default function MockResults() {
     Object.values(selfMarks).reduce((s, v) => s + (parseInt(v) || 0), 0),
     [selfMarks])
 
+  async function handleExportWord() {
+    setExporting('word')
+    await exportWord(session, items)
+    setExporting(null)
+  }
+
+  async function handleExportExcel() {
+    setExporting('excel')
+    await exportExcel(session, items)
+    setExporting(null)
+  }
+
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#5a7a9a', fontSize: 14, fontFamily: 'Arial' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--ink-3)', fontSize: 14 }}>
         Calculating results…
       </div>
     )
   }
 
   const tabs = ['A', 'B', 'C'].filter(s => bySection[s].length > 0)
-  const totalMarks = scoreA + scoreB + cSelfTotal
-  const maxMarks = bySection.A.length * 2 + bySection.B.length * 2
+  const hasC = bySection.C.length > 0
+  const totalAB = scoreA + scoreB
+  const maxAB = bySection.A.length * 2 + bySection.B.length * 2
+  const pctAB = maxAB ? Math.round(totalAB / maxAB * 100) : 0
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f0f4f8', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-sans)' }}>
       {/* Top bar */}
-      <div style={{ background: '#1a2b4a', padding: '0 20px', height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>Mockly</span>
-          <span style={{ color: '#7a9cbd' }}>|</span>
-          <span style={{ color: '#c8d8e8', fontSize: 13 }}>Results — {session?.subject} Mock Exam</span>
+      <div style={{ background: 'linear-gradient(135deg, #111B30 0%, #1F2C4D 100%)', padding: '0 28px', height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 18, color: '#fff' }}>Mockly</div>
+          <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 18 }}>·</span>
+          <span style={{ color: 'rgba(255,255,255,.7)', fontSize: 13 }}>Results — {session?.subject} Mock Exam</span>
         </div>
-        <button
-          onClick={() => navigate('/dashboard')}
-          style={{ color: '#c8d8e8', background: 'none', border: '1px solid rgba(255,255,255,0.3)', padding: '4px 14px', cursor: 'pointer', fontSize: 12, borderRadius: 2 }}
-        >
-          ← Dashboard
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {hasC && (
+            <>
+              <button
+                className="btn btn-sm"
+                style={{ color: '#fff', borderColor: 'rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)' }}
+                onClick={handleExportWord}
+                disabled={!!exporting}
+              >
+                <Icons.fileDoc size={13}/> {exporting === 'word' ? 'Exporting…' : 'Word (.docx)'}
+              </button>
+              <button
+                className="btn btn-sm"
+                style={{ color: '#fff', borderColor: 'rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)' }}
+                onClick={handleExportExcel}
+                disabled={!!exporting}
+              >
+                <Icons.fileXls size={13}/> {exporting === 'excel' ? 'Exporting…' : 'Excel (.xlsx)'}
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="btn btn-sm"
+            style={{ color: '#fff', borderColor: 'rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)' }}
+          >
+            <Icons.arrow size={12} style={{ transform: 'rotate(180deg)' }}/> Dashboard
+          </button>
+        </div>
       </div>
 
       {/* Score banner */}
-      <div style={{ background: '#0f4c81', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-        {bySection.A.length > 0 && <ScoreBadge label="Section A — MCQ" score={scoreA} max={bySection.A.length * 2} />}
-        {bySection.B.length > 0 && <ScoreBadge label="Section B — MTQ" score={scoreB} max={bySection.B.length * 2} />}
-        {bySection.C.length > 0 && <ScoreBadge label="Section C (Self)" score={cSelfTotal} max={40} />}
+      <div style={{ background: 'linear-gradient(135deg, #0F172A 0%, #1E2D4D 100%)', padding: '24px 28px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+        {bySection.A.length > 0 && <ScoreBadge label="Section A — MCQ" score={scoreA} max={bySection.A.length * 2}/>}
+        {bySection.B.length > 0 && <ScoreBadge label="Section B — MTQ" score={scoreB} max={bySection.B.length * 2}/>}
+        {bySection.C.length > 0 && <ScoreBadge label="Section C (Self)" score={cSelfTotal} max={40}/>}
         <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Auto-marked Total</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{scoreA + scoreB}/{bySection.A.length * 2 + bySection.B.length * 2}</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>Auto-marked total</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 600, color: pctAB >= 50 ? '#6EE7B7' : '#FCA5A5' }}>{totalAB}<span style={{ fontSize: 20, opacity: .5 }}>/{maxAB}</span></div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)' }}>{pctAB}% — {pctAB >= 50 ? 'Pass ✓' : 'Below pass mark'}</div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '20px 16px' }}>
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 20px' }}>
         {/* Section tabs */}
-        <div style={{ display: 'flex', borderBottom: '2px solid #d0d9e4', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, marginBottom: 24, width: 'fit-content' }}>
           {tabs.map(s => (
             <button
               key={s}
               onClick={() => setTab(s)}
               style={{
-                padding: '8px 20px', fontSize: 13, fontWeight: tab === s ? 700 : 500,
-                color: tab === s ? '#0f4c81' : '#5a7a9a',
-                borderBottom: tab === s ? '2px solid #0f4c81' : '2px solid transparent',
-                background: 'none', border: 'none', cursor: 'pointer',
-                marginBottom: -2, transition: 'all 0.15s',
+                padding: '7px 18px', fontSize: 13, fontWeight: tab === s ? 700 : 500,
+                color: tab === s ? '#fff' : 'var(--ink-3)',
+                background: tab === s ? 'var(--accent)' : 'transparent',
+                border: 'none', cursor: 'pointer', borderRadius: 10, transition: 'all .15s',
               }}
             >
               Section {s}
-              {s === 'A' && ` — ${scoreA}/${bySection.A.length * 2}`}
-              {s === 'B' && ` — ${scoreB}/${bySection.B.length * 2}`}
-              {s === 'C' && ` — ${cSelfTotal} (self)`}
+              {s === 'A' && ` · ${scoreA}/${bySection.A.length * 2}`}
+              {s === 'B' && ` · ${scoreB}/${bySection.B.length * 2}`}
+              {s === 'C' && ` · ${cSelfTotal} self`}
             </button>
           ))}
         </div>
@@ -252,7 +294,7 @@ export default function MockResults() {
         {(tab === 'A' || tab === 'B') && (
           <div>
             {bySection[tab].map((item, idx) => (
-              <QuestionResultCard key={item.id} item={item} qNum={idx + 1} />
+              <QuestionResultCard key={item.id} item={item} qNum={idx + 1}/>
             ))}
           </div>
         )}
@@ -268,20 +310,17 @@ export default function MockResults() {
               try { parsedAnswer = item.user_answer ? JSON.parse(item.user_answer) : {} } catch {}
 
               return (
-                <div key={item.id} style={{ background: '#fff', border: '1px solid #d0d9e4', borderRadius: 4, marginBottom: 20, overflow: 'hidden' }}>
-                  {/* Header */}
-                  <div style={{ padding: '12px 16px', background: '#f0f6ff', borderBottom: '1px solid #d0d9e4' }}>
-                    <div style={{ fontSize: 11, color: '#7a9cbd', marginBottom: 4 }}>{q.topic_name} | {q.exam_session}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2b4a' }}>Question C{qIdx + 1}</div>
+                <div key={item.id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, marginBottom: 24, overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 18px', background: 'var(--accent-soft)', borderBottom: '1px solid var(--line)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 4 }}>{q.topic_name} · {q.exam_session}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>Question C{qIdx + 1}</div>
                   </div>
 
-                  {/* Scenario */}
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid #e8eff5', background: '#fafcff', maxHeight: 200, overflowY: 'auto' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0f4c81', textTransform: 'uppercase', marginBottom: 6 }}>Scenario</div>
-                    <div style={{ fontSize: 12, color: '#333', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{q.scenario}</div>
+                  <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--line)', background: 'var(--bg)', maxHeight: 200, overflowY: 'auto' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Scenario</div>
+                    <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{q.scenario}</div>
                   </div>
 
-                  {/* Parts */}
                   {parts.map((p, pIdx) => {
                     const key = `${item.id}_${pIdx}`
                     const maxM = parseMaxMarks(p.requirement)
@@ -289,52 +328,48 @@ export default function MockResults() {
                     const userAns = parsedAnswer[pIdx]
 
                     return (
-                      <div key={pIdx} style={{ borderBottom: '1px solid #e8eff5' }}>
-                        {/* Requirement */}
-                        <div style={{ padding: '10px 16px', background: '#f8fafc', borderBottom: '1px solid #e8eff5' }}>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: '#1a2b4a' }}>Part {p.part}: </span>
-                          <span style={{ fontSize: 13, color: '#333' }}>{p.requirement}</span>
-                          {needsSheet && <span style={{ marginLeft: 8, fontSize: 11, color: '#0f4c81' }}>📊</span>}
+                      <div key={pIdx} style={{ borderBottom: '1px solid var(--line)' }}>
+                        <div style={{ padding: '12px 18px', background: 'var(--surface)', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                          <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>Part {p.part}:</span>
+                          <span style={{ fontSize: 13, color: 'var(--ink)' }}>{p.requirement}</span>
+                          {needsSheet && <Icons.fileXls size={13} style={{ color: 'var(--green)', flexShrink: 0 }}/>}
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-                          {/* Student answer */}
-                          <div style={{ padding: '10px 16px', borderRight: '1px solid #e8eff5' }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: '#7a9cbd', textTransform: 'uppercase', marginBottom: 6 }}>Your Answer</div>
-                            <div style={{ fontSize: 12, color: '#333', background: '#fafcff', border: '1px solid #e8eff5', padding: '8px 10px', minHeight: 80, maxHeight: 200, overflowY: 'auto', lineHeight: 1.6 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+                          <div style={{ padding: '12px 18px', borderRight: '1px solid var(--line)' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Your Answer</div>
+                            <div style={{ fontSize: 12.5, color: 'var(--ink)', background: 'var(--bg)', border: '1px solid var(--line)', padding: '10px 12px', minHeight: 80, maxHeight: 200, overflowY: 'auto', borderRadius: 10, lineHeight: 1.65 }}>
                               {userAns
                                 ? needsSheet
-                                  ? <span style={{ color: '#5a7a9a', fontStyle: 'italic' }}>Spreadsheet answer submitted</span>
-                                  : <div dangerouslySetInnerHTML={{ __html: userAns }} />
-                                : <span style={{ color: '#bbb', fontStyle: 'italic' }}>No answer provided</span>
+                                  ? <span style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>Spreadsheet answer submitted</span>
+                                  : <div dangerouslySetInnerHTML={{ __html: userAns }}/>
+                                : <span style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>No answer provided</span>
                               }
                             </div>
                           </div>
 
-                          {/* Model answer */}
-                          <div style={{ padding: '10px 16px' }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: '#1a7a45', textTransform: 'uppercase', marginBottom: 6 }}>Model Answer</div>
-                            <div style={{ fontSize: 12, color: '#1a4a2a', background: '#f0faf4', border: '1px solid #9de0b8', padding: '8px 10px', minHeight: 80, maxHeight: 200, overflowY: 'auto', whiteSpace: 'pre-wrap', lineHeight: 1.65 }}>
+                          <div style={{ padding: '12px 18px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Model Answer</div>
+                            <div style={{ fontSize: 12.5, color: 'var(--ink)', background: 'rgba(22,163,123,.06)', border: '1px solid rgba(22,163,123,.2)', padding: '10px 12px', minHeight: 80, maxHeight: 200, overflowY: 'auto', borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
                               {p.answer || 'No model answer provided.'}
                             </div>
                           </div>
                         </div>
 
-                        {/* Self-mark */}
-                        <div style={{ padding: '8px 16px', background: '#fffbf0', borderTop: '1px solid #f5e88a', display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 12, color: '#7a5a00', fontWeight: 600 }}>Self-mark:</span>
+                        <div style={{ padding: '10px 18px', background: 'rgba(245,179,59,.06)', borderTop: '1px solid rgba(245,179,59,.2)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: 12.5, color: 'var(--ink)', fontWeight: 600 }}>Self-mark:</span>
                           <input
                             type="number"
                             min="0"
                             max={maxM || 20}
                             value={selfMarks[key] ?? ''}
                             onChange={e => setSelfMarks(prev => ({ ...prev, [key]: e.target.value }))}
-                            style={{ width: 56, textAlign: 'center', border: '1px solid #f5c842', padding: '3px 6px', fontSize: 13, fontWeight: 700, outline: 'none' }}
+                            style={{ width: 60, textAlign: 'center', border: '1.5px solid var(--gold)', padding: '4px 8px', fontSize: 14, fontWeight: 700, outline: 'none', borderRadius: 8, color: 'var(--ink)', background: 'var(--surface)', fontFamily: 'var(--font-mono)' }}
                             placeholder="0"
                           />
-                          {maxM && <span style={{ fontSize: 12, color: '#9a7a00' }}>/ {maxM} marks</span>}
+                          {maxM && <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>/ {maxM} marks</span>}
                           {selfMarks[key] && maxM && parseInt(selfMarks[key]) > maxM && (
-                            <span style={{ fontSize: 11, color: '#c00', marginLeft: 4 }}>⚠ Exceeds max marks</span>
+                            <span style={{ fontSize: 11, color: 'var(--rose)', fontWeight: 600 }}>⚠ Exceeds max</span>
                           )}
                         </div>
                       </div>
@@ -345,8 +380,20 @@ export default function MockResults() {
             })}
 
             {bySection.C.length > 0 && (
-              <div style={{ textAlign: 'right', padding: '12px 0', fontSize: 14, fontWeight: 700, color: '#1a2b4a', borderTop: '2px solid #d0d9e4', marginTop: 8 }}>
-                Section C Self-Total: <span style={{ color: '#0f4c81', fontSize: 18 }}>{cSelfTotal}</span> marks
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14 }}>
+                <span style={{ fontSize: 14, color: 'var(--ink-3)' }}>Section C Self-Total</span>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--accent)' }}>{cSelfTotal} <span style={{ fontSize: 14, opacity: .5 }}>marks</span></span>
+              </div>
+            )}
+
+            {hasC && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button className="btn btn-sm" onClick={handleExportWord} disabled={!!exporting}>
+                  <Icons.fileDoc size={13}/> {exporting === 'word' ? 'Exporting…' : 'Download Word (.docx)'}
+                </button>
+                <button className="btn btn-sm" onClick={handleExportExcel} disabled={!!exporting}>
+                  <Icons.fileXls size={13}/> {exporting === 'excel' ? 'Exporting…' : 'Download Excel (.xlsx)'}
+                </button>
               </div>
             )}
           </div>
