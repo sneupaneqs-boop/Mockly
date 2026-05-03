@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { normalizeQuestion, requiresSpreadsheet } from '../lib/questionUtils'
 
@@ -7,8 +7,8 @@ const Spreadsheet = lazy(() => import('../components/Spreadsheet'))
 const WordProcessor = lazy(() => import('../components/WordProcessor'))
 
 // ─── Timer ────────────────────────────────────────────────────────────────────
-function Timer() {
-  const [secs, setSecs] = useState(3 * 60 * 60)
+function Timer({ initialSecs }) {
+  const [secs, setSecs] = useState(initialSecs)
   useEffect(() => {
     const t = setInterval(() => setSecs(s => Math.max(0, s - 1)), 1000)
     return () => clearInterval(t)
@@ -293,6 +293,8 @@ function NavCell({ label, state, onClick }) {
 export default function Mock() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const durationSecs = (location.state?.durationMins || 180) * 60
 
   const [session, setSession] = useState(null)
   const [mockQuestions, setMockQuestions] = useState([])
@@ -433,7 +435,7 @@ export default function Mock() {
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Timer />
+          <Timer initialSecs={durationSecs} />
           <button
             onClick={toggleFlag}
             style={{
